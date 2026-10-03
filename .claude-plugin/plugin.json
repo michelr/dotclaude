@@ -1,0 +1,1 @@
+{ "name": "query-table", "version": "0.1.0", "description": "Draws BigQuery MCP and dbt show results as an aligned, colored table", "types": "./types/index.d.ts" }
