@@ -38,20 +38,24 @@ It handles two sources:
 
 ## Install
 
-Clone the repo somewhere permanent:
+Clone the repo into your mods folder:
 
 ```bash
 git clone https://github.com/michelr/query-table.git ~/.claude/mods/query-table
 ```
 
-Then load it in one of two ways.
+Claude Code loads mods from `~/.claude/mods` on its own, so start a new session and it's active. Saving a file in the folder reloads the mod when the current turn ends.
+
+### Keeping the clone somewhere else
+
+If you'd rather keep the repo outside `~/.claude/mods`, point Claude Code at it instead. Use one of these, not both, and don't combine them with a copy in the mods folder, or the mod could load twice.
 
 **Every session** — add the folder to `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`:
 
 ```json
 {
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/query-table"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/src/query-table"
   }
 }
 ```
@@ -61,10 +65,8 @@ Separate several folders with `:` (`;` on Windows). This setting is read from yo
 **One session** — pass the folder on the command line:
 
 ```bash
-claude --plugin-dir ~/.claude/mods/query-table
+claude --plugin-dir ~/src/query-table
 ```
-
-In an interactive session the folder is watched: saving a file reloads the mod when the current turn ends.
 
 ## Usage
 
