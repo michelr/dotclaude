@@ -1,1 +1,8 @@
-{ "name": "query-table", "version": "0.1.0", "description": "Draws BigQuery MCP and dbt show results as an aligned, colored table", "types": "./types/index.d.ts" }
+{
+  "name": "query-table",
+  "version": "0.1.0",
+  "description": "Draws BigQuery MCP and dbt show results as an aligned, colored table",
+  "author": { "name": "Michel Radosavljevic", "email": "mr@michel.se", "url": "https://github.com/michelr" },
+  "repository": "https://github.com/michelr/query-table",
+  "types": "./types/index.d.ts"
+}
