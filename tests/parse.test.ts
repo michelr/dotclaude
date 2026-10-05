@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { displaySql, inlineDbtSql, isGroupedColumn, parseDbtShow, parseJsonRows, withThousands } from '../hooks/parse'
+import { bashQueryOf, displaySql, inlineDbtSql, isGroupedColumn, parseBqOutput, parseDbtShow, parseJsonRows, withThousands } from '../hooks/parse'
 
 const DBT_SHOW = `dbt-fusion 2.0.0-preview.189
    Loading ~/.dbt/profiles.yml
@@ -128,4 +128,55 @@ test('skips id, key and year columns', () => {
   expect(['user_id', 'id', 'loanpro_snapshot_key', 'report_year', 'total_amount', 'idle_days'].map(isGroupedColumn)).toEqual([
     false, false, false, false, true, true,
   ])
+})
+
+const BQ_PRETTY = `Waiting on bqjob_r37d_1 ... (0s) Current status: RUNNING\rWaiting on bqjob_r37d_1 ... (0s) Current status: DONE   
++-------------+------------------+--------------+---------+
+| report_date | transaction_type | total_amount | note    |
++-------------+------------------+--------------+---------+
+|  2026-09-28 | ADM              |   -895247.36 | a | b   |
+|  2026-09-29 | PMC2             |       843992 | NULL    |
++-------------+------------------+--------------+---------+`
+
+test('parses a bq pretty table, splitting cells on the border corners', () => {
+  expect(parseBqOutput(BQ_PRETTY)).toEqual({
+    columns: ['report_date', 'transaction_type', 'total_amount', 'note'],
+    rows: [
+      ['2026-09-28', 'ADM', '-895247.36', 'a | b'],
+      ['2026-09-29', 'PMC2', '843992', '∅'],
+    ],
+    notes: [],
+  })
+})
+
+test('parses a bq table cut short by head', () => {
+  const cut = BQ_PRETTY.split('\n').slice(0, 5).join('\n')
+  expect(parseBqOutput(cut)?.rows).toEqual([['2026-09-28', 'ADM', '-895247.36', 'a | b']])
+})
+
+test('gives no bq table when tail cut off its header', () => {
+  expect(parseBqOutput(BQ_PRETTY.split('\n').slice(4).join('\n'))).toBeUndefined()
+})
+
+test('parses bq json output', () => {
+  expect(parseBqOutput('[{"n":"1","s":null}]')?.rows).toEqual([['1', '∅']])
+})
+
+test('leaves bq output without rows alone', () => {
+  expect(parseBqOutput('BigQuery error in query operation: Not found')).toBeUndefined()
+})
+
+test('reads the SQL of a bq query command', () => {
+  const command = 'bq query --use_legacy_sql=false --format=pretty --project_id=p "select a\n    from \\`p.d.t\\`" 2>&1 | tail -40'
+  expect(bashQueryOf(command)).toEqual({ source: 'bq query', sql: 'select a\n    from `p.d.t`' })
+  expect(bashQueryOf("bq --location=US query --nouse_legacy_sql 'with x as (select 1) select * from x'")).toEqual({
+    source: 'bq query',
+    sql: 'with x as (select 1) select * from x',
+  })
+})
+
+test('knows a bq query without readable SQL, and ignores other bq commands', () => {
+  expect(bashQueryOf('bq query --nouse_legacy_sql < q.sql')).toEqual({ source: 'bq query' })
+  expect(bashQueryOf('bq show --format=pretty p:d.t')).toBeUndefined()
+  expect(bashQueryOf('uv run dbt show --select m')).toEqual({ source: 'dbt show' })
 })

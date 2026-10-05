@@ -1,7 +1,7 @@
-export type DbtSql = string
+export type BashQuery = { source: 'dbt show' | 'bq query'; sql?: string }
 
 declare module 'claude-code' {
   interface PluginState {
-    'query-table': { dbtSql: StateFamily<DbtSql> }
+    'query-table': { bashQuery: StateFamily<BashQuery> }
   }
 }

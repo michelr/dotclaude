@@ -2,10 +2,11 @@
 
 A Claude Code mod that draws query results as aligned, colored tables in the transcript, with the SQL shown above them.
 
-It handles two sources:
+It handles three sources:
 
 - **BigQuery MCP** — results of the `execute_sql` tool from an MCP server named `bigquery`
 - **dbt show** — the box table printed by `dbt show` (dbt Fusion)
+- **bq CLI** — `bq query` output in the default `pretty` format, or `--format=json` / `prettyjson`
 
 ## What it looks like
 
@@ -74,6 +75,7 @@ Nothing to run. Tables appear on their own when:
 
 - the BigQuery `execute_sql` tool returns rows
 - a Bash call runs `dbt show` and prints a table
+- a Bash call runs `bq query` and prints a table
 
 For `dbt show`, the SQL header appears when the query is passed inline and quoted:
 
@@ -82,7 +84,9 @@ dbt show --inline "select ... from {{ ref('my_model') }}"
 dbt show --inline='select ...'
 ```
 
-With `--select my_model`, or SQL passed as `"$(cat file.sql)"`, the usual Bash row stays and the table is drawn below it without a header.
+For `bq query`, the SQL header appears when the query is the quoted positional argument (`bq query --nouse_legacy_sql "select ..."`). Piping through `head` is fine; a `tail` that cuts off the column header leaves the output as plain text.
+
+With `--select my_model`, SQL passed as `"$(cat file.sql)"`, or a `bq query` reading from stdin, the usual Bash row stays and the table is drawn below it without a header.
 
 Running and failed calls are drawn by Claude Code as usual.
 
@@ -99,13 +103,13 @@ The types the mod compiles against (`.claude-plugin/types/`) are written by Clau
 | Path | What it holds |
 | --- | --- |
 | `hooks/register.tsx` | The render hooks and the table drawing |
-| `hooks/parse.ts` | Parsing BigQuery and dbt output, SQL display, number formatting |
-| `types/index.d.ts` | The session state the mod keeps (the inline SQL of each dbt show call) |
+| `hooks/parse.ts` | Parsing BigQuery, dbt and bq output, SQL display, number formatting |
+| `types/index.d.ts` | The session state the mod keeps (the source and inline SQL of each dbt show / bq query call) |
 | `tests/` | Parse tests and render tests |
 
 ## Limitations
 
-- dbt show prints a null and the string `"null"` the same way, so both show as `∅`
+- dbt show prints a null and the string `"null"` the same way, so both show as `∅`; `bq` does the same with `NULL`
 - A dbt query can't start with a `--` comment: dbt reads it as a flag
 - dbt core output isn't recognized, only dbt Fusion's
 - Queries longer than 10,000 characters are cut at that point

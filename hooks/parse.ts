@@ -1,3 +1,5 @@
+import type { BashQuery } from '../types'
+
 export type Table = { columns: string[]; rows: string[][]; notes: string[] }
 
 const NUMERIC = /^-?\d[\d,]*\.?\d*(e[+-]?\d+)?$/i
@@ -143,4 +145,58 @@ export const withThousands = (value: string): string => {
   if (!match) return value
   const [, sign = '', digits = '', fraction = ''] = match
   return sign + digits.replace(/\B(?=(\d{3})+$)/g, ',') + fraction
+}
+
+const BQ_QUERY_COMMAND = /(^|[^\w-])bq\s+(?:-\S+\s+)*query(\s|$)/
+const BQ_PROGRESS = /^\s*Waiting on \S+ \.\.\./
+const BQ_BORDER = /^\+(-+\+)+$/
+const SQL_START = /^\s*(\(|select|with|insert|update|delete|merge|create|declare)\b/i
+
+const bqCellBounds = (border: string): [number, number][] => {
+  const corners = [...border].flatMap((char, i) => (char === '+' ? [i] : []))
+  return corners.slice(1).map((end, i) => [(corners[i] ?? 0) + 1, end])
+}
+
+const splitBqRow = (line: string, bounds: [number, number][]): string[] => {
+  const chars = [...line]
+  return bounds.map(([start, end]) => chars.slice(start, end).join('').trim())
+}
+
+const parseBqPretty = (lines: string[]): Table | undefined => {
+  const start = lines.findIndex((l, i) => BQ_BORDER.test(l) && lines[i + 1]?.startsWith('|') && lines[i + 2] === l)
+  const border = lines[start]
+  if (!border) return undefined
+  const bounds = bqCellBounds(border)
+  const isRow = (l: string) => l.startsWith('|') && [...l].length === [...border].length
+  const end = lines.findLastIndex(l => BQ_BORDER.test(l) || isRow(l))
+  const [header, ...rows] = lines.slice(start, end + 1).filter(isRow).map(l => splitBqRow(l, bounds))
+  if (!header) return undefined
+  const notes = [...lines.slice(0, start), ...lines.slice(end + 1)].map(l => l.trim()).filter(Boolean)
+  return { columns: header, rows: rows.map(r => r.map(c => (c === 'NULL' ? '∅' : c))), notes }
+}
+
+export const parseBqOutput = (stdout: string): Table | undefined => {
+  const lines = stdout.split(/\r?\n|\r/).filter(l => !BQ_PROGRESS.test(l))
+  return parseBqPretty(lines) ?? parseJsonRows(lines.join('\n'))
+}
+
+const QUOTED_ARGUMENT = /\s(["'])/g
+
+const bqSql = (command: string, from: number): string | undefined => {
+  QUOTED_ARGUMENT.lastIndex = from
+  for (let match; (match = QUOTED_ARGUMENT.exec(command)); ) {
+    const rest = command.slice(match.index + match[0].length)
+    const end = rest.indexOf("'")
+    const sql = match[1] === '"' ? unquoteDouble(rest) : end < 0 ? undefined : rest.slice(0, end)
+    if (sql && SQL_START.test(sql)) return sql
+  }
+  return undefined
+}
+
+const withSql = (source: BashQuery['source'], sql: string | undefined): BashQuery => (sql ? { source, sql } : { source })
+
+export const bashQueryOf = (command: string): BashQuery | undefined => {
+  if (DBT_SHOW_COMMAND.test(command)) return withSql('dbt show', inlineDbtSql(command))
+  const bq = BQ_QUERY_COMMAND.exec(command)
+  return bq ? withSql('bq query', bqSql(command, bq.index + bq[0].length - 1)) : undefined
 }

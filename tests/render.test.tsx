@@ -109,3 +109,33 @@ test('number columns get thousand separators, id columns do not', async ($, on) 
   expect(await use.find({ type: 'Text', text: /^ *-1,234,567\.89$/ })).toBeDefined()
   expect(await use.find({ type: 'Text', text: /^1234567$/ })).toBeDefined()
 })
+
+const BQ_STDOUT = `+-------------+--------------+
+| report_date | total_amount |
++-------------+--------------+
+|  2026-09-28 |   -895247.36 |
++-------------+--------------+`
+
+test('a bq query row draws the table once under its SQL', async ($, on) => {
+  on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: `engine ${e.component}` }))
+  on('tool.call', () => ({ result: { stdout: BQ_STDOUT, stderr: '', interrupted: false } }))
+  const command = 'bq query --use_legacy_sql=false "select report_date, total_amount from t" 2>&1'
+  await $.tool.call({ tool: 'Bash', tool_use_id: 'toolu_4', command })
+
+  const output = { stdout: BQ_STDOUT, stderr: '', interrupted: false }
+  const props = { tool_use_id: 'toolu_4', tool: 'Bash', input: { command }, isRunning: false, isErrored: false, isInterrupted: false, output }
+  const use = await $.ui.mount({ plugin: 'query-table', surface: 'terminal', component: 'ToolUse', requestId: 'toolu_4', props })
+  expect(await use.find({ type: 'Text', text: /engine/ })).toBeUndefined()
+  expect((await use.find({ type: 'Code' }))?.props).toMatchObject({ source: 'select report_date, total_amount from t' })
+  expect(await use.find({ type: 'Text', text: /^bq query$/ })).toBeDefined()
+  expect(await use.find({ type: 'Text', text: /^ *-895,247\.36$/ })).toBeDefined()
+
+  const result = await $.ui.mount({
+    plugin: 'query-table',
+    surface: 'terminal',
+    component: 'ToolResult',
+    requestId: 'toolu_4',
+    props: { tool_use_id: 'toolu_4', tool: 'Bash', output, isErrored: false },
+  })
+  expect(await result.find({ type: 'Text', text: /bq query|engine/ })).toBeUndefined()
+})

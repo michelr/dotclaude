@@ -1,13 +1,14 @@
 import type { ElementTable, EngineInterface, Register, RenderChildren } from 'claude-code'
 
-import { displaySql, inlineDbtSql, isGroupedColumn, isNumeric, parseDbtShow, parseJsonRows, type Table, withThousands } from './parse'
+import type { BashQuery } from '../types'
+import { bashQueryOf, displaySql, isGroupedColumn, isNumeric, parseBqOutput, parseDbtShow, parseJsonRows, type Table, withThousands } from './parse'
 
 const BIGQUERY_TOOL = 'mcp__bigquery__execute_sql'
 const MAX_CELL = 32
 const MAX_ROWS = 50
 const MAX_SQL = 10000
 const SEPARATOR = ' │ '
-const DBT_SQL = { plugin: 'query-table', key: 'dbtSql' } as const
+const BASH_QUERY = { plugin: 'query-table', key: 'bashQuery' } as const
 
 const length = (text: string) => [...text].length
 
@@ -33,11 +34,13 @@ const layout = (table: Table, available: number) => {
   return { rows, widths: widths.slice(0, shown), isNumberColumn, hidden: widths.length - shown }
 }
 
-const toTable = (tool: string, output: unknown): Table | undefined => {
+type Query = { source: string; sql?: string }
+
+const toTable = (tool: string, output: unknown, query: Query): Table | undefined => {
   if (tool === BIGQUERY_TOOL) return parseJsonRows(output)
-  if (tool !== 'Bash') return undefined
   const stdout = (output as { stdout?: unknown })?.stdout
-  return typeof stdout === 'string' ? parseDbtShow(stdout) : undefined
+  if (typeof stdout !== 'string') return undefined
+  return query.source === 'bq query' ? parseBqOutput(stdout) : parseDbtShow(stdout)
 }
 
 const sqlOf = (input: unknown): string | undefined => {
@@ -45,12 +48,11 @@ const sqlOf = (input: unknown): string | undefined => {
   return typeof sql === 'string' ? displaySql(sql).slice(0, MAX_SQL) : undefined
 }
 
-const drawTable = ({ Box, Text, Code }: ElementTable, tool: string, table: Table, available: number, sql?: string) => {
+const drawTable = ({ Box, Text, Code }: ElementTable, source: string, table: Table, available: number, sql?: string) => {
   const { rows: formattedRows, widths, isNumberColumn, hidden } = layout(table, available)
   const rows = formattedRows.slice(0, MAX_ROWS)
   const tableWidth = widths.reduce((sum, width) => sum + width, 0) + length(SEPARATOR) * (widths.length - 1)
   const ruleWidth = Math.min(available, Math.max(tableWidth, ...(sql ?? '').split('\n').map(length)))
-  const source = tool === BIGQUERY_TOOL ? 'BigQuery' : 'dbt show'
   const summary = [
     `${table.rows.length} row${table.rows.length === 1 ? '' : 's'}`,
     `${table.columns.length} column${table.columns.length === 1 ? '' : 's'}`,
@@ -94,10 +96,11 @@ const drawTable = ({ Box, Text, Code }: ElementTable, tool: string, table: Table
   )
 }
 
-const headerSqlOf = async ($: EngineInterface, tool: string, toolUseId: string, input?: unknown): Promise<string | undefined> => {
-  if (tool === BIGQUERY_TOOL) return sqlOf(input)
-  const { value } = await $.state.get({ ...DBT_SQL, id: toolUseId })
-  return value ? displaySql(value).slice(0, MAX_SQL) : undefined
+const queryOf = async ($: EngineInterface, tool: string, toolUseId: string, input?: unknown): Promise<Query | undefined> => {
+  if (tool === BIGQUERY_TOOL) return { source: 'BigQuery', sql: sqlOf(input) }
+  if (tool !== 'Bash') return undefined
+  const { value }: { value?: BashQuery } = await $.state.get({ ...BASH_QUERY, id: toolUseId })
+  return value ? { ...value, sql: value.sql && displaySql(value.sql).slice(0, MAX_SQL) } : { source: 'dbt show' }
 }
 
 export const register: Register = on => {
@@ -108,25 +111,28 @@ export const register: Register = on => {
   )
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    const sql = inlineDbtSql(e.command)
-    if (sql) await $.state.set({ ...DBT_SQL, id: e.tool_use_id }, sql)
+    const query = bashQueryOf(e.command)
+    if (query) await $.state.set({ ...BASH_QUERY, id: e.tool_use_id }, query)
     return next(e)
   })
 
   on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
-    const table = e.props.isRunning || e.props.isErrored ? undefined : toTable(e.props.tool, e.props.output)
-    if (!table?.columns.length) return next(e)
-    const sql = await headerSqlOf($, e.props.tool, e.props.tool_use_id, e.props.input)
-    return sql || e.props.tool === BIGQUERY_TOOL
-      ? drawTable($.ui.resolve(e), e.props.tool, table, (e.viewport?.columns ?? 120) - 6, sql)
+    if (e.props.isRunning || e.props.isErrored) return next(e)
+    const query = await queryOf($, e.props.tool, e.props.tool_use_id, e.props.input)
+    const table = query && toTable(e.props.tool, e.props.output, query)
+    if (!query || !table?.columns.length) return next(e)
+    return query.sql || e.props.tool === BIGQUERY_TOOL
+      ? drawTable($.ui.resolve(e), query.source, table, (e.viewport?.columns ?? 120) - 6, query.sql)
       : next(e)
   })
 
   on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
-    const table = e.props.isErrored ? undefined : toTable(e.props.tool, e.props.output)
-    if (!table?.columns.length) return next(e)
+    if (e.props.isErrored) return next(e)
+    const query = await queryOf($, e.props.tool, e.props.tool_use_id)
+    const table = query && toTable(e.props.tool, e.props.output, query)
+    if (!query || !table?.columns.length) return next(e)
     const elements = $.ui.resolve(e)
-    const drawnAbove = e.props.tool === BIGQUERY_TOOL || (await headerSqlOf($, e.props.tool, e.props.tool_use_id))
-    return drawnAbove ? <elements.Box /> : drawTable(elements, e.props.tool, table, (e.viewport?.columns ?? 120) - 6)
+    const drawnAbove = e.props.tool === BIGQUERY_TOOL || query.sql
+    return drawnAbove ? <elements.Box /> : drawTable(elements, query.source, table, (e.viewport?.columns ?? 120) - 6)
   })
 }
