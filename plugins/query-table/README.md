@@ -39,34 +39,11 @@ It handles three sources:
 
 ## Install
 
-Clone the repo into your mods folder:
+query-table is part of the [dotclaude](https://github.com/michelr/dotclaude) marketplace:
 
 ```bash
-git clone https://github.com/michelr/query-table.git ~/.claude/mods/query-table
-```
-
-Claude Code loads mods from `~/.claude/mods` on its own, so start a new session and it's active. Saving a file in the folder reloads the mod when the current turn ends.
-
-### Keeping the clone somewhere else
-
-If you'd rather keep the repo outside `~/.claude/mods`, point Claude Code at it instead. Use one of these, not both, and don't combine them with a copy in the mods folder, or the mod could load twice.
-
-**Every session** — add the folder to `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/src/query-table"
-  }
-}
-```
-
-Separate several folders with `:` (`;` on Windows). This setting is read from your user settings only, not from a project's.
-
-**One session** — pass the folder on the command line:
-
-```bash
-claude --plugin-dir ~/src/query-table
+claude plugin marketplace add michelr/dotclaude
+claude plugin install query-table@dotclaude
 ```
 
 ## Usage

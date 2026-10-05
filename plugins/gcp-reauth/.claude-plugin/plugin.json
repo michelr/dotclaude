@@ -1,7 +1,7 @@
 {
-  "name": "query-table",
+  "name": "gcp-reauth",
   "version": "0.1.0",
-  "description": "Draws BigQuery MCP, bq query and dbt show results as an aligned, colored table",
+  "description": "Flags expired Google Cloud credentials (invalid_rapt) with the login command to run",
   "author": {
     "name": "Michel Radosavljevic",
     "email": "mr@michel.se",
