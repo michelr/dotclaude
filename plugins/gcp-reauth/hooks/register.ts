@@ -1,6 +1,8 @@
 import type { Register } from 'claude-code'
 
-import { LOGIN, modelNoteOf, nextExpired, outcomeOf, statusOf } from './detect'
+import type { Credential } from '../types'
+
+import { LOGIN, modelNoteOf, nextExpired, outcomeOf, PROBE, probeOutcomeOf, statusOf } from './detect'
 
 const EXPIRED = { plugin: 'gcp-reauth', key: 'expired' } as const
 
@@ -8,7 +10,23 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const { value = [] } = await $.state.get(EXPIRED)
     $.ui.status(statusOf(value))
-    return next(e)
+    const started = await next(e)
+    void (async () => {
+      const outcomes = await Promise.all(
+        (Object.keys(PROBE) as Credential[]).map(credential =>
+          $.process
+            .run(PROBE[credential], { timeoutMs: 15000 })
+            .then(({ exitCode, stderr }) => probeOutcomeOf(credential, exitCode, stderr))
+            .catch(() => undefined),
+        ),
+      )
+      const { value: expired = [] } = await $.state.get(EXPIRED)
+      const updated = outcomes.reduce((acc, outcome) => (outcome ? nextExpired(acc, outcome) : acc), expired)
+      await $.state.set(EXPIRED, updated)
+      $.ui.status(statusOf(updated))
+      if (updated.length) $.ui.toast(`GCP credentials expired: run ${updated.map(c => `! ${LOGIN[c]}`).join(' and ')}`, { timeoutMs: 10000 })
+    })()
+    return started
   })
 
   on('tool.call', async ($, e, next) => {

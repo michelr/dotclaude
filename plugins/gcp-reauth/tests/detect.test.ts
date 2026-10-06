@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { nextExpired, outcomeOf, statusOf } from '../hooks/detect'
+import { nextExpired, outcomeOf, probeOutcomeOf, statusOf } from '../hooks/detect'
 
 const RAPT = 'auth: cannot fetch token: 400\nResponse: {"error": "invalid_grant", "error_subtype": "invalid_rapt"}'
 
@@ -32,4 +32,11 @@ test('tracks each expired credential once and names its login in the status', ()
   expect(both).toEqual(['adc', 'gcloud'])
   expect(statusOf(both)).toBe('GCP reauth needed: ! gcloud auth application-default login · ! gcloud auth login')
   expect(statusOf(nextExpired(['adc'], { credential: 'adc', isExpired: false }))).toBeUndefined()
+})
+
+test('a token probe expires on a reauth error, restores on success, and ignores other failures', () => {
+  const reauth = 'There was a problem refreshing your current auth tokens: Reauthentication failed.'
+  expect(probeOutcomeOf('gcloud', 1, reauth)).toEqual({ credential: 'gcloud', isExpired: true })
+  expect(probeOutcomeOf('adc', 0, '')).toEqual({ credential: 'adc', isExpired: false })
+  expect(probeOutcomeOf('adc', 1, 'Unable to reach oauth2.googleapis.com')).toBeUndefined()
 })

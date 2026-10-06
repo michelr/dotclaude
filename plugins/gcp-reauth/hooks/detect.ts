@@ -12,6 +12,14 @@ const LOGIN_COMMAND = /(^|[^\w-])gcloud\s+auth\s+(application-default\s+)?login(
 
 export type Outcome = { credential: Credential; isExpired: boolean }
 
+export const PROBE: Record<Credential, readonly string[]> = {
+  adc: ['gcloud', 'auth', 'application-default', 'print-access-token'],
+  gcloud: ['gcloud', 'auth', 'print-access-token'],
+}
+
+export const probeOutcomeOf = (credential: Credential, exitCode: number, stderr: string): Outcome | undefined =>
+  REAUTH.test(stderr) ? { credential, isExpired: true } : exitCode === 0 ? { credential, isExpired: false } : undefined
+
 const credentialOfText = (text: string, fallback: Credential): Credential =>
   text.includes(LOGIN.adc) ? 'adc' : text.includes(LOGIN.gcloud) ? 'gcloud' : fallback
 

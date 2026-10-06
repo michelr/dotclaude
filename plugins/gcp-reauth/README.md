@@ -4,7 +4,9 @@ A Claude Code mod that notices when Google Cloud credentials have expired and sa
 
 ## What it does
 
-When a BigQuery MCP call, or a Bash call running `bq`, `gcloud`, `gsutil` or `dbt`, fails with `invalid_rapt`, `invalid_grant`, `reauth related error` or `Reauthentication required`:
+At session start it checks both logins in the background (`gcloud auth print-access-token` and `gcloud auth application-default print-access-token`) and sets the status line and a toast for any that need reauthentication. Network and other failures are ignored.
+
+Also, when a BigQuery MCP call, or a Bash call running `bq`, `gcloud`, `gsutil` or `dbt`, fails with `invalid_rapt`, `invalid_grant`, `reauth related error` or `Reauthentication required`:
 
 - A toast and a status line name the login to run:
   - BigQuery MCP and dbt use application-default credentials: `! gcloud auth application-default login`
