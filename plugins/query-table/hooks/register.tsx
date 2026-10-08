@@ -1,9 +1,8 @@
 import type { ElementTable, EngineInterface, Register, RenderChildren } from 'claude-code'
 
 import type { BashQuery } from '../types'
-import { bashQueryOf, displaySql, isGroupedColumn, isNumeric, parseBqOutput, parseDbtShow, parseJsonRows, type Table, withThousands } from './parse'
+import { bashQueryOf, displaySql, isGroupedColumn, isNumeric, mcpQuerySource, parseBqOutput, parseDbtShow, parseJsonRows, type Table, textOf, withThousands } from './parse'
 
-const BIGQUERY_TOOL = 'mcp__bigquery__execute_sql'
 const MAX_CELL = 32
 const MAX_ROWS = 50
 const MAX_SQL = 10000
@@ -37,14 +36,15 @@ const layout = (table: Table, available: number) => {
 type Query = { source: string; sql?: string }
 
 const toTable = (tool: string, output: unknown, query: Query): Table | undefined => {
-  if (tool === BIGQUERY_TOOL) return parseJsonRows(output)
+  if (mcpQuerySource(tool)) return parseJsonRows(output) ?? parseDbtShow(textOf(output) ?? '')
   const stdout = (output as { stdout?: unknown })?.stdout
   if (typeof stdout !== 'string') return undefined
   return query.source === 'bq query' ? parseBqOutput(stdout) : parseDbtShow(stdout)
 }
 
 const sqlOf = (input: unknown): string | undefined => {
-  const sql = (input as { sql?: unknown })?.sql
+  const fields = input as { sql?: unknown; sql_query?: unknown; query?: unknown } | undefined
+  const sql = [fields?.sql, fields?.sql_query, fields?.query].find(value => typeof value === 'string')
   return typeof sql === 'string' ? displaySql(sql).slice(0, MAX_SQL) : undefined
 }
 
@@ -97,7 +97,8 @@ const drawTable = ({ Box, Text, Code }: ElementTable, source: string, table: Tab
 }
 
 const queryOf = async ($: EngineInterface, tool: string, toolUseId: string, input?: unknown): Promise<Query | undefined> => {
-  if (tool === BIGQUERY_TOOL) return { source: 'BigQuery', sql: sqlOf(input) }
+  const source = mcpQuerySource(tool)
+  if (source) return { source, sql: sqlOf(input) }
   if (tool !== 'Bash') return undefined
   const { value }: { value?: BashQuery } = await $.state.get({ ...BASH_QUERY, id: toolUseId })
   return value ? { ...value, sql: value.sql && displaySql(value.sql).slice(0, MAX_SQL) } : { source: 'dbt show' }
@@ -105,7 +106,7 @@ const queryOf = async ($: EngineInterface, tool: string, toolUseId: string, inpu
 
 export const register: Register = on => {
   on('ui.render', { component: 'ToolGroup' }, ($, e, next) =>
-    !e.props.isExpanded && e.props.calls.some(call => call.tool === BIGQUERY_TOOL)
+    !e.props.isExpanded && e.props.calls.some(call => mcpQuerySource(call.tool))
       ? next({ ...e, props: { ...e.props, isExpanded: true } })
       : next(e),
   )
@@ -121,7 +122,7 @@ export const register: Register = on => {
     const query = await queryOf($, e.props.tool, e.props.tool_use_id, e.props.input)
     const table = query && toTable(e.props.tool, e.props.output, query)
     if (!query || !table?.columns.length) return next(e)
-    return query.sql || e.props.tool === BIGQUERY_TOOL
+    return query.sql || mcpQuerySource(e.props.tool)
       ? drawTable($.ui.resolve(e), query.source, table, (e.viewport?.columns ?? 120) - 6, query.sql)
       : next(e)
   })
@@ -132,7 +133,7 @@ export const register: Register = on => {
     const table = query && toTable(e.props.tool, e.props.output, query)
     if (!query || !table?.columns.length) return next(e)
     const elements = $.ui.resolve(e)
-    const drawnAbove = e.props.tool === BIGQUERY_TOOL || query.sql
+    const drawnAbove = mcpQuerySource(e.props.tool) || query.sql
     return drawnAbove ? <elements.Box /> : drawTable(elements, query.source, table, (e.viewport?.columns ?? 120) - 6)
   })
 }

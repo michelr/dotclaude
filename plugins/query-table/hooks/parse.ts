@@ -5,12 +5,12 @@ export type Table = { columns: string[]; rows: string[][]; notes: string[] }
 const NUMERIC = /^-?\d[\d,]*\.?\d*(e[+-]?\d+)?$/i
 const DBT_ROW = /^│(.*)│$/
 const DBT_BORDER = /^[┌╞├└]/
-const DBT_BANNER = /^\s*dbt-fusion /
+const DBT_BANNER = /^\s*dbt(?:-fusion)? v?\d/
 const DBT_TRAILING_DOT = /^-?\d[\d,]*\.$/
 
 export const isNumeric = (value: string): boolean => NUMERIC.test(value.trim())
 
-const textOf = (output: unknown): string | undefined => {
+export const textOf = (output: unknown): string | undefined => {
   if (typeof output === 'string') return output
   if (Array.isArray(output)) {
     const texts = output.map(block => (block as { text?: unknown })?.text).filter(t => typeof t === 'string')
@@ -54,15 +54,22 @@ const splitConcatenatedObjects = (text: string): string[] => {
 const isRecordArray = (value: unknown): value is Record<string, unknown>[] =>
   Array.isArray(value) && value.length > 0 && value.every(isRecord)
 
+const ROW_KEYS = ['rows', 'results', 'show', 'data']
+
+const wrappedRows = (value: Record<string, unknown>): Record<string, unknown>[] | undefined => {
+  const entries = Object.entries(value)
+  const [, rows] = entries.find(([key, rows]) => ROW_KEYS.includes(key) && isRecordArray(rows)) ?? (entries.length === 1 ? entries[0]! : [])
+  return isRecordArray(rows) ? rows : undefined
+}
+
 const recordsOf = (text: string): Record<string, unknown>[] | undefined => {
   const whole = tryJson(text.trim())
   if (isRecordArray(whole)) return whole
-  if (isRecord(whole)) {
-    const values = Object.values(whole)
-    return values.length === 1 && isRecordArray(values[0]) ? values[0] : [whole]
-  }
+  if (isRecord(whole)) return wrappedRows(whole) ?? [whole]
   const objects = splitConcatenatedObjects(text).map(tryJson)
-  return objects.length && objects.every(isRecord) ? (objects as Record<string, unknown>[]) : undefined
+  if (!objects.length || !objects.every(isRecord)) return undefined
+  const records = objects as Record<string, unknown>[]
+  return (records.length === 1 && wrappedRows(records[0]!)) || records
 }
 
 const cell = (value: unknown): string =>
@@ -93,7 +100,7 @@ export const parseDbtShow = (stdout: string): Table | undefined => {
   const [header = [], ...rows] = body.map(splitDbtRow)
   const notes = [...lines.slice(0, start), ...lines.slice(end + 1)]
     .map(l => l.trim())
-    .filter(l => l && !/^(dbt-fusion|Loading |Query show_sql|\d+ rows?\.|=+ .* =+$)/.test(l))
+    .filter(l => l && !/^(dbt(-fusion)? v?\d|Loading |Query show_sql|\d+ rows?\.|=+ .* =+$)/.test(l))
   return { columns: header, rows: rows.map(r => r.map(dbtCell)), notes }
 }
 
@@ -199,4 +206,18 @@ export const bashQueryOf = (command: string): BashQuery | undefined => {
   if (DBT_SHOW_COMMAND.test(command)) return withSql('dbt show', inlineDbtSql(command))
   const bq = BQ_QUERY_COMMAND.exec(command)
   return bq ? withSql('bq query', bqSql(command, bq.index + bq[0].length - 1)) : undefined
+}
+
+const MCP_QUERY_TOOLS: [server: RegExp, tool: RegExp, source: string][] = [
+  [/bigquery/i, /^(execute_sql|execute_query|run_query|query)$/i, 'BigQuery'],
+  [/dbt/i, /^show$/i, 'dbt show'],
+  [/dbt/i, /^execute_sql$/i, 'dbt SQL'],
+]
+
+export const mcpQuerySource = (tool: string): string | undefined => {
+  const split = tool.lastIndexOf('__')
+  if (!tool.startsWith('mcp__') || split < 5) return undefined
+  const server = tool.slice(5, split)
+  const name = tool.slice(split + 2)
+  return MCP_QUERY_TOOLS.find(([serverPattern, toolPattern]) => serverPattern.test(server) && toolPattern.test(name))?.[2]
 }

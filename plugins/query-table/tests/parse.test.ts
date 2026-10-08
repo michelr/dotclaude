@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bashQueryOf, displaySql, inlineDbtSql, isGroupedColumn, parseBqOutput, parseDbtShow, parseJsonRows, withThousands } from '../hooks/parse'
+import { bashQueryOf, displaySql, inlineDbtSql, isGroupedColumn, mcpQuerySource, parseBqOutput, parseDbtShow, parseJsonRows, withThousands } from '../hooks/parse'
 
 const DBT_SHOW = `dbt-fusion 2.0.0-preview.189
    Loading ~/.dbt/profiles.yml
@@ -179,4 +179,33 @@ test('knows a bq query without readable SQL, and ignores other bq commands', () 
   expect(bashQueryOf('bq query --nouse_legacy_sql < q.sql')).toEqual({ source: 'bq query' })
   expect(bashQueryOf('bq show --format=pretty p:d.t')).toBeUndefined()
   expect(bashQueryOf('uv run dbt show --select m')).toEqual({ source: 'dbt show' })
+})
+
+test('parses dbt show under the dbt 2.x banner', () => {
+  expect(parseDbtShow(DBT_SHOW.replace('dbt-fusion 2.0.0-preview.189', 'dbt 2.0.6'))?.notes).toEqual([
+    'Succeeded [  2.82s] model dbt.inline (ephemeral)',
+  ])
+})
+
+test('unwraps rows kept beside other keys, as the dbt MCP returns them', () => {
+  const text = '{"results":[{"a":1},{"a":2}],"columns":["a"],"row_count":2}'
+  expect(parseJsonRows([{ type: 'text', text }])?.rows).toEqual([['1'], ['2']])
+})
+
+test('finds the JSON rows after dbt log lines', () => {
+  const text = 'dbt 2.0.6\n   Loading profiles.yml\n{"show":[{"a":1},{"a":null}]}\n1 rows.'
+  expect(parseJsonRows(text)?.rows).toEqual([['1'], ['∅']])
+})
+
+test('recognises query tools on any BigQuery or dbt MCP server', () => {
+  expect(mcpQuerySource('mcp__bigquery__execute_sql')).toBe('BigQuery')
+  expect(mcpQuerySource('mcp__claude_ai_Google_Cloud_BigQuery__execute_sql')).toBe('BigQuery')
+  expect(mcpQuerySource('mcp__claude_ai_Google_Cloud_BigQuery__query')).toBe('BigQuery')
+  expect(mcpQuerySource('mcp__dbt__show')).toBe('dbt show')
+  expect(mcpQuerySource('mcp__plugin_dbt_dbt-mcp__show')).toBe('dbt show')
+  expect(mcpQuerySource('mcp__dbt__execute_sql')).toBe('dbt SQL')
+  expect(mcpQuerySource('mcp__bigquery__list_dataset_ids')).toBeUndefined()
+  expect(mcpQuerySource('mcp__dbt__list')).toBeUndefined()
+  expect(mcpQuerySource('mcp__postgres__query')).toBeUndefined()
+  expect(mcpQuerySource('Bash')).toBeUndefined()
 })

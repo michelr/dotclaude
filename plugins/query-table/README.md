@@ -2,10 +2,11 @@
 
 A Claude Code mod that draws query results as aligned, colored tables in the transcript, with the SQL shown above them.
 
-It handles three sources:
+It handles these sources:
 
-- **BigQuery MCP** — results of the `execute_sql` tool from an MCP server named `bigquery`
-- **dbt show** — the box table printed by `dbt show` (dbt Fusion)
+- **BigQuery MCP** — the SQL tool (`execute_sql`, `execute_query`, `run_query` or `query`) of any MCP server with `bigquery` in its name, including the claude.ai Google Cloud BigQuery connector
+- **dbt MCP** — the `show` and `execute_sql` tools of any MCP server with `dbt` in its name
+- **dbt show** — the box table printed by `dbt show` (dbt Fusion, `dbt-fusion` or `dbt 2.x` banner)
 - **bq CLI** — `bq query` output in the default `pretty` format, or `--format=json` / `prettyjson`
 
 ## What it looks like
@@ -34,8 +35,8 @@ It handles three sources:
 ## Requirements
 
 - A Claude Code build with mod support (`claude plugin validate` and `claude plugin test` available)
-- For BigQuery tables: an MCP server registered as `bigquery` that exposes `execute_sql`
-- For dbt tables: dbt Fusion (the mod recognizes its `dbt-fusion` banner)
+- For MCP tables: a BigQuery or dbt MCP server, under any name containing `bigquery` or `dbt`
+- For dbt CLI tables: dbt Fusion (the mod recognizes its `dbt-fusion` or `dbt 2.x` banner)
 
 ## Install
 
@@ -50,7 +51,7 @@ claude plugin install query-table@dotclaude
 
 Nothing to run. Tables appear on their own when:
 
-- the BigQuery `execute_sql` tool returns rows
+- a BigQuery MCP SQL tool or the dbt MCP `show` / `execute_sql` tool returns rows
 - a Bash call runs `dbt show` and prints a table
 - a Bash call runs `bq query` and prints a table
 

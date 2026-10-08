@@ -1,7 +1,7 @@
 {
   "name": "query-table",
-  "version": "0.1.0",
-  "description": "Draws BigQuery MCP, bq query and dbt show results as an aligned, colored table",
+  "version": "0.2.0",
+  "description": "Draws BigQuery MCP, dbt MCP, bq query and dbt show results as an aligned, colored table",
   "author": {
     "name": "Michel Radosavljevic",
     "email": "mr@michel.se",

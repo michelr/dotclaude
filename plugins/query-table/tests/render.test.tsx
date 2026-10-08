@@ -139,3 +139,33 @@ test('a bq query row draws the table once under its SQL', async ($, on) => {
   })
   expect(await result.find({ type: 'Text', text: /bq query|engine/ })).toBeUndefined()
 })
+
+test('a dbt MCP show row draws its rows under the SQL', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`engine ${e.component}`}</Text>
+  })
+  const props = {
+    ...BIGQUERY_ROW,
+    tool_use_id: 'toolu_dbt',
+    tool: 'mcp__dbt__show',
+    input: { sql_query: "select n from {{ ref('t') }}", limit: 5 },
+    output: [{ type: 'text', text: '{"results":[{"n":"1"},{"n":"2"}],"columns":["n"]}' }],
+  }
+  const use = await $.ui.mount({ plugin: 'query-table', surface: 'terminal', component: 'ToolUse', props })
+  expect(await use.find({ type: 'Text', text: /engine/ })).toBeUndefined()
+  expect((await use.find({ type: 'Code' }))?.props).toMatchObject({ source: "select n from {{ ref('t') }}" })
+  expect(await use.findAll({ type: 'Text', text: /^dbt show$/ })).toHaveLength(1)
+  expect(await use.find({ type: 'Text', text: / · 2 rows · 1 column/ })).toBeDefined()
+})
+
+test("the claude.ai BigQuery connector's rows draw as a table", async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`engine ${e.component}`}</Text>
+  })
+  const props = { ...BIGQUERY_ROW, tool_use_id: 'toolu_connector', tool: 'mcp__claude_ai_Google_Cloud_BigQuery__execute_sql' }
+  const use = await $.ui.mount({ plugin: 'query-table', surface: 'terminal', component: 'ToolUse', props })
+  expect(await use.find({ type: 'Text', text: /engine/ })).toBeUndefined()
+  expect(await use.findAll({ type: 'Text', text: /^BigQuery$/ })).toHaveLength(1)
+})

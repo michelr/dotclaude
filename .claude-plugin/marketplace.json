@@ -12,7 +12,7 @@
     },
     {
       "name": "query-table",
-      "description": "Draws BigQuery MCP, bq query and dbt show results as an aligned, colored table",
+      "description": "Draws BigQuery MCP, dbt MCP, bq query and dbt show results as an aligned, colored table",
       "source": "./plugins/query-table",
       "category": "productivity"
     }
