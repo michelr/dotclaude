@@ -2,7 +2,10 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dotclaude",
   "description": "Michel's Claude Code mods, skills and plugins",
-  "owner": { "name": "Michel Radosavljevic", "email": "mr@michel.se" },
+  "owner": {
+    "name": "Michel Radosavljevic",
+    "email": "mr@michel.se"
+  },
   "plugins": [
     {
       "name": "gcp-reauth",
@@ -14,6 +17,12 @@
       "name": "query-table",
       "description": "Draws BigQuery MCP, dbt MCP, bq query and dbt show results as an aligned, colored table",
       "source": "./plugins/query-table",
+      "category": "productivity"
+    },
+    {
+      "name": "meeting-reminder",
+      "description": "Warns 5 minutes before a Google Calendar meeting with a band, a toast and a native notification",
+      "source": "./plugins/meeting-reminder",
       "category": "productivity"
     }
   ]

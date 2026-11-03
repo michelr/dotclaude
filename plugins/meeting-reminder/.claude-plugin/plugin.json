@@ -1,0 +1,12 @@
+{
+  "name": "meeting-reminder",
+  "version": "0.1.0",
+  "description": "Warns 5 minutes before a Google Calendar meeting with a band, a toast and a native notification; keeps the next one in the status line",
+  "author": {
+    "name": "Michel Radosavljevic",
+    "email": "mr@michel.se",
+    "url": "https://github.com/michelr"
+  },
+  "repository": "https://github.com/michelr/dotclaude",
+  "types": "./types/index.d.ts"
+}

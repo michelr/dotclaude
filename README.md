@@ -8,6 +8,7 @@ My Claude Code setup in one place: mods, skills and plugins, published as a plug
 | --- | --- |
 | [`plugins/query-table`](plugins/query-table) | Mod: draws BigQuery MCP, `bq query` and `dbt show` results as colored tables |
 | [`plugins/gcp-reauth`](plugins/gcp-reauth) | Mod: flags expired Google Cloud credentials with the login command to run |
+| [`plugins/meeting-reminder`](plugins/meeting-reminder) | Mod: warns 5 minutes before a Google Calendar meeting with a band, toast and notification |
 | [`config/statusline.sh`](config/statusline.sh) | Status line: model, folder, git branch, cost and context use |
 
 ## Install
