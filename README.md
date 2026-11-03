@@ -9,7 +9,7 @@ My Claude Code setup in one place: mods, skills and plugins, published as a plug
 | [`plugins/query-table`](plugins/query-table) | Mod: draws BigQuery MCP, `bq query` and `dbt show` results as colored tables |
 | [`plugins/gcp-reauth`](plugins/gcp-reauth) | Mod: flags expired Google Cloud credentials with the login command to run |
 | [`plugins/meeting-reminder`](plugins/meeting-reminder) | Mod: warns 5 minutes before a Google Calendar meeting with a band, toast and notification |
-| [`config/statusline.sh`](config/statusline.sh) | Status line: model, folder, git branch, cost and context use |
+| [`config/ccstatusline.json`](config/ccstatusline.json) | Status line: [ccstatusline](https://github.com/sirmalloc/ccstatusline) layout with model, usage, branch, skills, effort, context, cost and cache hit rate |
 
 ## Install
 
@@ -18,7 +18,7 @@ git clone https://github.com/michelr/dotclaude.git ~/Documents/dotclaude
 ~/Documents/dotclaude/install.sh
 ```
 
-`install.sh` links the config files into `~/.claude` (backing up any file already there), adds this folder as the `dotclaude` marketplace, and installs every plugin in it. The status line also needs `"statusLine": { "type": "command", "command": "~/.claude/statusline.sh" }` in `~/.claude/settings.json`.
+`install.sh` links the config files into `~/.claude` (backing up any file already there), adds this folder as the `dotclaude` marketplace, and installs every plugin in it. The status line needs `npm install -g ccstatusline` and `"statusLine": { "type": "command", "command": "ccstatusline", "padding": 0, "refreshInterval": 10 }` in `~/.claude/settings.json`.
 
 Because the marketplace is a local folder, plugins are read straight from the clone: edit a file, then run `/reload-plugins`. No reinstall or version bump needed.
 

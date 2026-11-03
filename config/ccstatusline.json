@@ -1,0 +1,122 @@
+{
+  "version": 4,
+  "lines": [
+    [
+      {
+        "id": "1",
+        "type": "model",
+        "color": "cyan",
+        "bold": true,
+        "rawValue": true
+      },
+      {
+        "id": "8ccd7ea7-7d28-4c03-844f-3091be86fdd7",
+        "type": "session-usage",
+        "backgroundColor": "bgWhite",
+        "numberFormat": {
+          "style": "compact"
+        },
+        "metadata": {
+          "display": "slider",
+          "label": "Sesh "
+        }
+      },
+      {
+        "id": "0927e9c1-9149-46bd-9f40-3164350782ee",
+        "type": "weekly-usage",
+        "color": "brightBlue",
+        "numberFormat": {
+          "style": "compact"
+        },
+        "metadata": {
+          "invert": "false",
+          "display": "slider",
+          "label": "Week "
+        }
+      },
+      {
+        "id": "5",
+        "type": "git-branch",
+        "color": "magenta"
+      },
+      {
+        "id": "413b42ec-ff76-4915-86df-9697b0393be9",
+        "type": "skills",
+        "backgroundColor": "bgCyan"
+      }
+    ],
+    [
+      {
+        "id": "e27d6217-b636-4f4e-993a-8dad6c2ff24b",
+        "type": "thinking-effort",
+        "backgroundColor": "bgCyan",
+        "metadata": {
+          "label": ""
+        }
+      },
+      {
+        "id": "b792508f-12b0-43b9-a126-0d2b406f7713",
+        "type": "context-percentage",
+        "backgroundColor": "bgCyan",
+        "numberFormat": {
+          "style": "whole"
+        },
+        "metadata": {
+          "display": "slider",
+          "label": "Ctx  "
+        }
+      },
+      {
+        "id": "c9075a37-0ed1-49fc-a276-f42f0d031009",
+        "type": "session-cost",
+        "backgroundColor": "bgBrightCyan",
+        "rawValue": false,
+        "metadata": {
+          "label": "Cost "
+        }
+      },
+      {
+        "id": "48b033af-a52e-49b0-a822-0eaedde5ad6a",
+        "type": "cache-hit-rate",
+        "backgroundColor": "bgBrightGreen",
+        "metadata": {
+          "label": "Cache Hit "
+        }
+      }
+    ],
+    []
+  ],
+  "flexMode": "full",
+  "compactThreshold": 60,
+  "colorLevel": 3,
+  "defaultPadding": " ",
+  "defaultPaddingSide": "both",
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "gitCacheTtlSeconds": 5,
+  "terminalWidthCacheTtlSeconds": 5,
+  "customCommandCacheTtlSeconds": 0,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": true,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [
+      ""
+    ],
+    "endCaps": [
+      ""
+    ],
+    "theme": "gruvbox",
+    "autoAlign": true,
+    "continueThemeAcrossLines": true
+  },
+  "installation": {
+    "method": "pinned",
+    "installedVersion": "2.2.32"
+  }
+}

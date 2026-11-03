@@ -13,7 +13,8 @@ link() {
   echo "linked $target -> $source"
 }
 
-link "$repo/config/statusline.sh" "$HOME/.claude/statusline.sh"
+mkdir -p "$HOME/.config/ccstatusline"
+link "$repo/config/ccstatusline.json" "$HOME/.config/ccstatusline/settings.json"
 
 claude plugin marketplace add "$repo"
 for plugin in $(jq -r '.plugins[].name' "$repo/.claude-plugin/marketplace.json"); do
